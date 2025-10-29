@@ -1,0 +1,174 @@
+# ================================
+# Python 相关
+# ================================
+# Bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ================================
+# 虚拟环境
+# ================================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+conda-meta/
+.env
+
+# ================================
+# 测试与覆盖率
+# ================================
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+*.cover
+*.log
+nosetests.xml
+
+# ================================
+# 环境变量与配置
+# ================================
+.env
+.env.local
+.env.*.local
+*.env
+config.local.yaml
+secrets.yaml
+
+# ================================
+# 数据库文件
+# ================================
+data/app.db
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+*.db-journal
+
+# ================================
+# 向量数据库与模型缓存
+# ================================
+data/chroma/
+data/faiss/
+data/vector_store/
+data/embeddings/
+.cache/
+huggingface/
+transformers_cache/
+torch_cache/
+
+# ================================
+# 模型权重与检查点
+# ================================
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+models/pretrained/
+models/finetuned/
+runs/
+wandb/
+tensorboard_logs/
+mlruns/
+
+# ================================
+# 数据文件（根据需求调整）
+# ================================
+data/raw/
+data/processed/
+data/uploads/
+*.csv
+*.parquet
+*.arrow
+*.jsonl
+# 保留示例数据
+!data/examples/
+
+# ================================
+# 日志文件
+# ================================
+*.log
+logs/
+*.out
+*.err
+nohup.out
+
+# ================================
+# IDE 与编辑器
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ================================
+# OS 文件
+# ================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ================================
+# 文档构建
+# ================================
+docs/_build/
+docs/.doctrees/
+site/
+*.pdf
+*.tex
+
+# ================================
+# 临时文件
+# ================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# ================================
+# 打包与分发
+# ================================
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+
+# ================================
+# Jupyter Notebook
+# ================================
+.ipynb_checkpoints
+# *.ipynb
+
+# ================================
+# 其他工具
+# ================================
+.pre-commit-config.yaml.bak
+poetry.lock  # 如果使用 pip 管理，可以忽略 poetry.lock
+Pipfile.lock

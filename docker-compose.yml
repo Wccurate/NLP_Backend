@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4o-mini}
+      - TEMPERATURE=${TEMPERATURE:-0.3}
+      - HISTORY_WINDOW=${HISTORY_WINDOW:-10}
+      - CHROMA_DIR=${CHROMA_DIR:-./data/chroma}
+      - PRIMARY_INTENT_MODE=${PRIMARY_INTENT_MODE:-openai}
+    volumes:
+      - .:/app
+      - ./data:/app/data
