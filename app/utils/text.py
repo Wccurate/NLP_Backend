@@ -15,6 +15,12 @@ def extract_document(input_str: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def extract_documents(input_str: str) -> List[str]:
+    """Return all document blocks from the input string."""
+
+    return [match.strip() for match in DOCUMENT_PATTERN.findall(input_str)]
+
+
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> List[str]:
     """Split text into overlapping chunks suitable for retrieval."""
 
@@ -36,4 +42,3 @@ def strip_document_tags(input_str: str) -> str:
     """Remove document tags from the string."""
 
     return DOCUMENT_PATTERN.sub("", input_str).strip()
-

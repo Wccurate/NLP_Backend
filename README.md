@@ -43,24 +43,58 @@ Key endpoints:
 - `GET /history?limit=20` – last conversation turns.
 - `POST /generate` – main interaction entrypoint.
 
-Example request:
-```bash
-curl -X POST http://localhost:8000/generate \
-  -H "Content-Type: application/json" \
-  -d '{"input":"Match me with remote NLP roles","web_search":false}'
-```
+### Terminal curl examples
+1. Resume evaluation (text + PDF):
+   ```bash
+   curl -X POST http://localhost:8000/generate \
+     -F "input=请帮我评估一下附件中的简历" \
+     -F "file=@examples/WANGSHIBO_CV.pdf" \
+     -F "persist_documents=false" \
+     -F "return_stream=false"
+   ```
+2. Job recommendations (text only):
+   ```bash
+   curl -X POST http://localhost:8000/generate \
+     -F "input=推荐一些远程的机器学习工程师岗位" \
+     -F "web_search=false"
+   ```
+3. Mock interview practice:
+   ```bash
+   curl -X POST http://localhost:8000/generate \
+     -F "input=我们来进行一次数据科学家的模拟面试" \
+     -F "web_search=false"
+   ```
+4. Normal chat with optional web search:
+   ```bash
+   curl -X POST http://localhost:8000/generate \
+     -F "input=谢谢，今天的建议很有帮助" \
+     -F "web_search=true"
+   ```
 
 ### Streaming responses
 Set `"return_stream": true` to receive newline-delimited text chunks.
 
 ### Document ingestion
-Include `<document>...</document>` in the `input` to index transient text snippets. Set `persist_documents=true` to keep them in Chroma; otherwise they are removed after the request.
+- Upload Word/PDF files via the `file` field; text is extracted (with simple parsing) and wrapped in `<document>...</document>` before processing or storage.
+- You can still embed raw text in the `input` using `<document>` tags manually.
+- Set `persist_documents=true` to keep extracted chunks in Chroma; otherwise they are deleted after the response.
 
 ## Testing
-```bash
-pytest
-```
-The suite uses `TestClient` and monkeypatches the OpenAI provider for the `/generate` happy path test.
+1. Install dependencies (once):
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run the entire test suite from the project root:
+   ```bash
+   pytest
+   ```
+
+Test layout:
+- `tests/test_generate_api.py` – exercises `/generate` across resume evaluation, job matching, mock interview, and normal chat flows (uses `examples/WANGSHIBO_CV.pdf`).
+- `tests/test_history_api.py` – verifies `/history` captures the combined text + `<document>` conversation turns.
+- `tests/test_health.py` – quick smoke check for `/health`.
+
+The fixtures in `tests/conftest.py` replace OpenAI and Chroma calls with deterministic stubs, so no real API key is required while running tests.
 
 ## Docker (optional)
 ```bash
