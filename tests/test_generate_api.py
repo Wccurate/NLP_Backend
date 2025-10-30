@@ -74,3 +74,22 @@ def test_generate_routes_cover_intents(client_factory) -> None:
         assert chat_payload["intent"] == "normal_chat"
         assert "Thanks" in chat_payload["text"]
         assert chat_payload["tool_calls"] == ["normal_chat"]
+
+
+def test_add_job_description_endpoint(client_factory) -> None:
+    client, _ = client_factory([])
+
+    with client as app_client:  # type: TestClient
+        resp = app_client.post(
+            "/jobs",
+            json={
+                "text": "Senior NLP Engineer responsible for deploying language models.",
+                "title": "Senior NLP Engineer",
+                "metadata": {"location": "Remote"},
+            },
+        )
+
+    assert resp.status_code == 201
+    payload = resp.json()
+    assert payload["inserted"] > 0
+    assert payload["ids"]

@@ -17,7 +17,13 @@ from .config import get_settings
 from .db import History, get_db, init_db
 from .llm_provider import get_llm_provider
 from .rag import vector_store
-from .schemas import GenerateRequest, GenerateResponse, SourceItem
+from .schemas import (
+    GenerateRequest,
+    GenerateResponse,
+    JobDescriptionRequest,
+    JobDescriptionResponse,
+    SourceItem,
+)
 from .tools import intent as intent_tools
 from .tools import web_search
 from .utils import file_loader, sliding_window, text as text_utils
@@ -104,22 +110,22 @@ async def generate(
     if not request_payload.input.strip() and not file_text.strip():
         raise HTTPException(status_code=422, detail="Input text or file is required.")
 
-    existing_docs = text_utils.extract_documents(request_payload.input)
+    doc_texts: List[str] = []
     if file_text:
-        existing_docs.append(file_text)
+        doc_texts.append(file_text.strip())
 
-    user_text = text_utils.strip_document_tags(request_payload.input).strip()
+    user_text = request_payload.input.strip()
+
+    if not user_text and not doc_texts:
+        raise HTTPException(status_code=422, detail="Input text or file is required.")
 
     combined_input = user_text
-    for doc_content in existing_docs:
-        doc_content = doc_content.strip()
-        if not doc_content:
-            continue
+    for doc_content in doc_texts:
         if combined_input:
             combined_input += "\n"
         combined_input += f"<document>\n{doc_content}\n</document>"
 
-    documents_joined = "\n\n".join(existing_docs).strip()
+    documents_joined = "\n\n".join(doc_texts).strip()
 
     settings = get_settings()
 
@@ -130,7 +136,7 @@ async def generate(
     turn_index = _count_intent(past_messages, "mock_interview")
 
     try:
-        intent = intent_tools.intent_router(user_text or combined_input)
+        intent = intent_tools.intent_router(user_text or documents_joined or combined_input)
     except Exception as exc:  # noqa: BLE001
         logger.error("Intent classification failed: %s", exc)
         raise HTTPException(status_code=500, detail="Intent classification failed.") from exc
@@ -140,48 +146,13 @@ async def generate(
     search_seed = user_text or documents_joined
     search_results = await _maybe_search(search_seed, request_payload.web_search)
 
-    chunk_ids: List[str] = []
-    bm25_extra: List[Dict[str, str]] = []
-
-    if documents_joined:
-        chunks: List[str] = []
-        metadatas: List[Dict[str, str]] = []
-        for doc_index, doc_content in enumerate(existing_docs):
-            for chunk_index, chunk in enumerate(text_utils.chunk_text(doc_content)):
-                chunks.append(chunk)
-                metadatas.append(
-                    {
-                        "source": f"user_doc#{doc_index}-{chunk_index}",
-                        "type": "document",
-                        "created_at": datetime.utcnow().isoformat(),
-                    }
-                )
-        if chunks:
-            try:
-                chunk_ids = vector_store.add_texts(
-                    chunks,
-                    metadatas=metadatas,
-                    embedder=llm,
-                )
-                bm25_extra = [
-                    {"id": meta["source"], "text": chunk, "metadata": meta}
-                    for chunk, meta in zip(chunks, metadatas)
-                ]
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to index document: %s", exc)
-
     def retriever(question: str, hyde_text: str | None = None):
-        return vector_store.search(
-            question,
-            hyde_text=hyde_text,
-            extra_corpus=bm25_extra if bm25_extra else None,
-            embedder=llm,
-        )
+        return vector_store.search(question, hyde_text=hyde_text, embedder=llm)
 
     agent_state = {
         "intent": intent,
         "history": history_str,
-        "user_input": user_text or combined_input,
+        "user_input": user_text or documents_joined or combined_input,
         "resume_text": documents_joined or user_text,
         "turn_index": turn_index,
         "search_results": search_results,
@@ -193,8 +164,6 @@ async def generate(
         agent_result = run_agent(agent_state)
     except Exception as exc:  # noqa: BLE001
         logger.error("Agent execution failed: %s", exc)
-        if chunk_ids and not request_payload.persist_documents:
-            vector_store.delete(chunk_ids)
         raise HTTPException(status_code=500, detail="Generation failed.") from exc
 
     result_payload = agent_result.get("result", {})
@@ -207,13 +176,10 @@ async def generate(
 
     tool_calls = [meta.get("tool")] if meta.get("tool") else []
 
-    user_entry = History(role="user", content=combined_input or request_payload.input, intent=intent)
+    user_entry = History(role="user", content=combined_input or documents_joined, intent=intent)
     assistant_entry = History(role="assistant", content=response_text, intent=intent)
     db.add_all([user_entry, assistant_entry])
     db.commit()
-
-    if chunk_ids and not request_payload.persist_documents:
-        vector_store.delete(chunk_ids)
 
     if request_payload.return_stream:
         async def stream() -> AsyncGenerator[str, None]:
@@ -232,3 +198,53 @@ async def generate(
         sources=sources,
         tool_calls=tool_calls,
     )
+@app.post("/jobs", response_model=JobDescriptionResponse, status_code=201)
+def add_job_description(payload: JobDescriptionRequest) -> JobDescriptionResponse:
+    """Persist a job description into the vector store for RAG."""
+
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Job description text is required.")
+
+    chunks = text_utils.chunk_text(text)
+    if not chunks:
+        raise HTTPException(status_code=422, detail="Job description text is empty.")
+
+    llm = get_llm_provider()
+    timestamp = datetime.utcnow().isoformat()
+    base_source = payload.title or "job_description"
+    extra_meta = payload.metadata or {}
+
+    metadatas = []
+    for idx, _ in enumerate(chunks):
+        meta = {
+            "source": f"{base_source}#{idx}",
+            "title": payload.title,
+            "type": "job_description",
+            "created_at": timestamp,
+        }
+        meta.update(extra_meta)
+        metadatas.append(meta)
+
+    try:
+        ids = vector_store.add_texts(chunks, metadatas=metadatas, embedder=llm)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to index job description: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to index job description.") from exc
+
+    logger.info("Indexed job description with %d chunks", len(ids))
+    return JobDescriptionResponse(inserted=len(ids), ids=ids)
+
+
+
+# def debug_test():
+#     import uvicorn
+
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+
+
+# if __name__=="__main__":
+#     debug_test()

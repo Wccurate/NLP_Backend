@@ -41,7 +41,8 @@ This boots `uvicorn` with autoreload on `http://0.0.0.0:8000`.
 Key endpoints:
 - `GET /health` – service heartbeat.
 - `GET /history?limit=20` – last conversation turns.
-- `POST /generate` – main interaction entrypoint.
+- `POST /generate` – main interaction entrypoint (conversation + tools).
+- `POST /jobs` – index a job description for hybrid retrieval.
 
 ### Terminal curl examples
 1. Resume evaluation (text + PDF):
@@ -70,14 +71,21 @@ Key endpoints:
      -F "input=谢谢，今天的建议很有帮助" \
      -F "web_search=true"
    ```
+5. Add a job description to the vector store:
+   ```bash
+   curl -X POST http://localhost:8000/jobs \
+     -H "Content-Type: application/json" \
+     -d '{"text":"Senior NLP Engineer responsible for production LLM pipelines.","title":"Senior NLP Engineer","metadata":{"location":"Remote"}}'
+   ```
 
 ### Streaming responses
 Set `"return_stream": true` to receive newline-delimited text chunks.
 
 ### Document ingestion
 - Upload Word/PDF files via the `file` field; text is extracted (with simple parsing) and wrapped in `<document>...</document>` before processing or storage.
-- You can still embed raw text in the `input` using `<document>` tags manually.
-- Set `persist_documents=true` to keep extracted chunks in Chroma; otherwise they are deleted after the response.
+- Users do not need to add `<document>` tags manually—the backend handles the wrapping automatically.
+- Uploaded files are *not* added to the job vector store; only descriptions ingested through `POST /jobs` are indexed for RAG.
+- PDF extraction defaults to a PyMuPDF-based parser; set `OCR_SPACE_API_KEY` (and optional `OCR_SPACE_ENDPOINT` / `OCR_SPACE_LANGUAGE`) to enable the OCR fallback strategy when needed.
 
 ## Testing
 1. Install dependencies (once):
@@ -86,7 +94,7 @@ Set `"return_stream": true` to receive newline-delimited text chunks.
    ```
 2. Run the entire test suite from the project root:
    ```bash
-   pytest
+   PYTHONPATH=. pytest
    ```
 
 Test layout:
@@ -95,6 +103,11 @@ Test layout:
 - `tests/test_health.py` – quick smoke check for `/health`.
 
 The fixtures in `tests/conftest.py` replace OpenAI and Chroma calls with deterministic stubs, so no real API key is required while running tests.
+
+Run an individual test module:
+```bash
+PYTHONPATH=. pytest tests/test_history_api.py
+```
 
 ## Docker (optional)
 ```bash

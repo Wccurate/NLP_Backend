@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -31,3 +31,20 @@ class GenerateResponse(BaseModel):
     text: str
     sources: List[SourceItem] = Field(default_factory=list)
     tool_calls: List[str] = Field(default_factory=list)
+
+
+class JobDescriptionRequest(BaseModel):
+    """Payload for adding job descriptions to the vector store."""
+
+    text: str = Field(..., description="Plain text job description to index.")
+    title: Optional[str] = Field(default=None, description="Optional title or identifier.")
+    metadata: Optional[Dict[str, str]] = Field(
+        default=None, description="Optional metadata key/value pairs."
+    )
+
+
+class JobDescriptionResponse(BaseModel):
+    """Response after inserting job description chunks."""
+
+    inserted: int
+    ids: List[str] = Field(default_factory=list)

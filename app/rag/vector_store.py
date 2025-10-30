@@ -20,7 +20,26 @@ logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "jobs_demo"
 
+# _DEFAULT_CORPUS: List[Dict[str, str]] = [
+#     {
+#         "id": "jobs_demo#1",
+#         "text": "Software Engineer working on backend APIs with FastAPI and cloud services.",
+#     },
+#     {
+#         "id": "jobs_demo#2",
+#         "text": "Machine Learning Engineer focusing on NLP, transformers, and production pipelines.",
+#     },
+#     {
+#         "id": "jobs_demo#3",
+#         "text": "Data Analyst role requiring SQL, dashboards, and storytelling with data.",
+#     },
+#     {
+#         "id": "jobs_demo#4",
+#         "text": "DevOps Engineer supporting CI/CD, Kubernetes, and infrastructure automation.",
+#     },
+# ]
 _DEFAULT_CORPUS: List[Dict[str, str]] = [
+    # --- 科技 (Software & Data) ---
     {
         "id": "jobs_demo#1",
         "text": "Software Engineer working on backend APIs with FastAPI and cloud services.",
@@ -36,6 +55,200 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
     {
         "id": "jobs_demo#4",
         "text": "DevOps Engineer supporting CI/CD, Kubernetes, and infrastructure automation.",
+    },
+    {
+        "id": "jobs_demo#5",
+        "text": "Frontend Developer specializing in React, TypeScript, and modern CSS frameworks.",
+    },
+    {
+        "id": "jobs_demo#6",
+        "text": "Data Scientist, PhD required, focusing on causal inference and bayesian modeling.",
+    },
+    {
+        "id": "jobs_demo#7",
+        "text": "Mobile App Developer (iOS) proficient in Swift, SwiftUI, and CoreData.",
+    },
+    {
+        "id": "jobs_demo#8",
+        "text": "Android Developer with experience in Kotlin, Jetpack Compose, and RxJava.",
+    },
+    {
+        "id": "jobs_demo#9",
+        "text": "Cloud Architect (AWS) responsible for designing scalable, serverless microservices.",
+    },
+    {
+        "id": "jobs_demo#10",
+        "text": "Cybersecurity Analyst monitoring for threats, SIEM, and vulnerability assessment.",
+    },
+    {
+        "id": "jobs_demo#11",
+        "text": "QA Automation Engineer writing test scripts using Selenium, Cypress, and Pytest.",
+    },
+    {
+        "id": "jobs_demo#12",
+        "text": "Database Administrator (DBA) managing PostgreSQL clusters and query optimization.",
+    },
+    {
+        "id": "jobs_demo#13",
+        "text": "Site Reliability Engineer (SRE) focused on system observability, SLOs, and incident response.",
+    },
+    {
+        "id": "jobs_demo#14",
+        "text": "Technical Product Manager defining roadmap for a B2B SaaS platform.",
+    },
+    {
+        "id": "jobs_demo#15",
+        "text": "AI Researcher publishing papers on multimodal learning and generative models.",
+    },
+    {
+        "id": "jobs_demo#16",
+        "text": "Game Developer using Unity, C#, and 3D graphics programming.",
+    },
+    {
+        "id": "jobs_demo#17",
+        "text": "Embedded Systems Engineer programming firmware in C/C++ for IoT devices.",
+    },
+
+    # --- 创意与设计 (Creative & Design) ---
+    {
+        "id": "jobs_demo#18",
+        "text": "UX/UI Designer creating wireframes, prototypes in Figma, and conducting user testing.",
+    },
+    {
+        "id": "jobs_demo#19",
+        "text": "Graphic Designer for branding, marketing materials, using Adobe Creative Suite.",
+    },
+    {
+        "id": "jobs_demo#20",
+        "text": "Content Writer specializing in SEO, long-form blog posts, and technical whitepapers.",
+    },
+    {
+        "id": "jobs_demo#21",
+        "text": "Video Editor proficient in Adobe Premiere Pro, After Effects, and color grading.",
+    },
+    {
+        "id": "jobs_demo#22",
+        "text": "Animation Artist (3D) using Blender and Maya for character modeling and rigging.",
+    },
+
+    # --- 商业与金融 (Business & Finance) ---
+    {
+        "id": "jobs_demo#23",
+        "text": "Digital Marketing Manager overseeing PPC, SEO, and email marketing campaigns.",
+    },
+    {
+        "id": "jobs_demo#24",
+        "text": "Sales Development Representative (SDR) doing cold outreach and qualifying leads.",
+    },
+    {
+        "id": "jobs_demo#25",
+        "text": "Account Executive (AE) managing the full sales cycle and closing enterprise deals.",
+    },
+    {
+        "id": "jobs_demo#26",
+        "text": "Financial Analyst (FP&A) responsible for budgeting, forecasting, and variance analysis.",
+    },
+    {
+        "id": "jobs_demo#27",
+        "text": "Accountant (CPA) handling accounts payable, receivable, and financial reporting.",
+    },
+    {
+        "id": "jobs_demo#28",
+        "text": "Investment Banking Analyst building financial models and executing M&A deals.",
+    },
+    {
+        "id": "jobs_demo#29",
+        "text": "Management Consultant solving strategic problems for Fortune 500 clients.",
+    },
+    {
+        "id": "jobs_demo#30",
+        "text": "Business Analyst bridging the gap between stakeholders and the development team.",
+    },
+
+    # --- 运营与支持 (Operations & Support) ---
+    {
+        "id": "jobs_demo#31",
+        "text": "Human Resources (HR) Generalist managing payroll, benefits, and employee relations.",
+    },
+    {
+        "id": "jobs_demo#32",
+        "text": "Technical Recruiter sourcing candidates for highly specialized engineering roles.",
+    },
+    {
+        "id": "jobs_demo#33",
+        "text": "Project Manager (PMP) coordinating timelines, resources, and deliverables.",
+    },
+    {
+        "id": "jobs_demo#34",
+        "text": "Agile Coach / Scrum Master facilitating sprint ceremonies and team processes.",
+    },
+    {
+        "id": "jobs_demo#35",
+        "text": "Customer Support Specialist handling inbound tickets via Zendesk and live chat.",
+    },
+    {
+        "id": "jobs_demo#36",
+        "text": "Supply Chain Manager optimizing logistics, inventory, and vendor negotiations.",
+    },
+    {
+        "id": "jobs_demo#37",
+        "text": "Operations Manager overseeing daily business functions and process improvement.",
+    },
+    {
+        "id": "jobs_demo#38",
+        "text": "Executive Assistant managing calendars, travel, and communications for C-level.",
+    },
+
+    # --- 医疗与科学 (Healthcare & Science) ---
+    {
+        "id": "jobs_demo#39",
+        "text": "Registered Nurse (RN) working in the Intensive Care Unit (ICU).",
+    },
+    {
+        "id": "jobs_demo#40",
+        "text": "Medical Researcher (Biotech) conducting experiments on CAR-T cell therapies.",
+    },
+    {
+        "id": "jobs_demo#41",
+        "text": "Bioinformatics Scientist analyzing genomic data (NGS) using Python and R.",
+    },
+    {
+        "id": "jobs_demo#42",
+        "text": "Clinical Research Coordinator (CRC) managing patient recruitment for trials.",
+    },
+    {
+        "id": "jobs_demo#43",
+        "text": "Pharmacist dispensing medication and advising patients on drug interactions.",
+    },
+
+    # --- 工程 (非软件) 与其他 (Engineering & Other) ---
+    {
+        "id": "jobs_demo#44",
+        "text": "Mechanical Engineer designing components in SolidWorks and performing FEA.",
+    },
+    {
+        "id":B_demo#45",
+        "text": "Electrical Engineer designing PCB layouts for consumer electronics.",
+    },
+    {
+        "id": "jobs_demo#46",
+        "text": "Civil Engineer managing large-scale infrastructure projects and site plans.",
+    },
+    {
+        "id": "jobs_demo#47",
+        "text": "Aerospace Engineer working on satellite propulsion systems.",
+    },
+    {
+        "id": "jobs_demo#48",
+        "text": "Paralegal assisting attorneys with case research and document preparation.",
+    },
+    {
+        "id": "jobs_demo#49",
+        "text": "High School Teacher (Mathematics) teaching Algebra and Calculus.",
+    },
+    {
+        "id": "jobs_demo#50",
+        "text": "Architect (AIA) designing commercial buildings using AutoCAD and Revit.",
     },
 ]
 
