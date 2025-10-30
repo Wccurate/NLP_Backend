@@ -60,7 +60,7 @@ All JSON responses follow the `application/json` media type unless specified. Mu
   |------|------|----------|---------|-------------|
   | `input` | string | Yes\* | `""` | User question or message. Required unless a file is uploaded. |
   | `file` | file (DOCX/PDF optional text/plain) | No | — | Optional resume or supporting document. Extracted text is appended as `<document>…</document>` for processing and stored with the user turn. |
-| `web_search` | boolean (`"true"`/`"false"`) | No | `false` | Deprecated. The agent now decides autonomously whether to search using MCP-style planning; this flag is ignored. |
+  | `web_search` | boolean (`"true"`/`"false"`) | No | `false` | Deprecated. The agent now decides autonomously whether to search using MCP-style planning; this flag is ignored. |
   | `return_stream` | boolean | No | `false` | When `true`, the endpoint returns a streaming plain-text response (newline-delimited); otherwise JSON. |
   | `persist_documents` | boolean | No | `false` | Reserved flag; uploaded documents are not persisted to the vector store (job descriptions must be added via `/jobs`). |
 
@@ -70,8 +70,24 @@ All JSON responses follow the `application/json` media type unless specified. Mu
     "intent": "recommend_job",
     "text": "Recommended roles ... See [0], [1].",
     "sources": [
-      {"source": "jobs_demo#42", "score": 0.87, "text": "ML Engineer role ..."},
-      {"source": "jobs_demo#17", "score": 0.81, "text": "Data Scientist ..."}
+      {
+        "source": "jobs_demo#42",
+        "text": "ML Engineer role ...",
+        "hybrid_score": 0.87,
+        "dense_score": 0.91,
+        "bm25_score": 0.78,
+        "bm25_raw_score": 11.2,
+        "dense_distance": 0.14
+      },
+      {
+        "source": "jobs_demo#17",
+        "text": "Data Scientist ...",
+        "hybrid_score": 0.81,
+        "dense_score": 0.84,
+        "bm25_score": 0.76,
+        "bm25_raw_score": 10.9,
+        "dense_distance": 0.18
+      }
     ],
     "tool_calls": ["recommend_job"]
   }

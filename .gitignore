@@ -95,8 +95,8 @@ data/uploads/
 *.parquet
 *.arrow
 *.jsonl
-# 保留示例数据
-!data/examples/
+# 示例与演示文件
+examples/
 
 # ================================
 # 日志文件

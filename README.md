@@ -54,6 +54,7 @@ Key endpoints:
      -F "file=@examples/WANGSHIBO_CV.pdf" \
      -F "persist_documents=false"
    ```
+   Replace the sample PDF path with any local resume file.
 2. Job recommendations (text only):
    ```bash
    curl -X POST http://localhost:8000/generate \
@@ -100,7 +101,7 @@ Set `"return_stream": true` to receive newline-delimited text chunks.
    ```
 
 Test layout:
-- `tests/test_generate_api.py` – exercises `/generate` across resume evaluation, job matching, mock interview, and normal chat flows (uses `examples/WANGSHIBO_CV.pdf`).
+- `tests/test_generate_api.py` – exercises `/generate` across resume evaluation, job matching, mock interview, and normal chat flows.
 - `tests/test_history_api.py` – verifies `/history` captures the combined text + `<document>` conversation turns.
 - `tests/test_health.py` – quick smoke check for `/health`.
 

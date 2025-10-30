@@ -281,11 +281,8 @@ def _compute_dense_score(distance: float) -> float:
     Convert distance to similarity score.
     Handles different distance metrics (L2, cosine, etc.)
     """
-    # 使用指数衰减函数，适用于各种距离度量
-    # 距离越小，分数越高；距离为0时分数为1
     if distance <= 0:
         return 1.0
-    # 使用 1/(1+distance) 转换，确保分数在 [0, 1] 范围内
     return 1.0 / (1.0 + distance)
 
 
@@ -346,8 +343,7 @@ def search(
     embedder = embedder or get_llm_provider()
     col = get_collection()
     
-    # 步骤 1: 从 Chroma 获取候选文档（获取更多候选用于重排）
-    candidate_multiplier = 3  # 获取 top_k * 3 个候选
+    candidate_multiplier = 3  
     n_candidates = max(top_k * candidate_multiplier, 20)  # 至少获取20个
     
     candidates: List[Dict[str, object]] = []
@@ -382,7 +378,6 @@ def search(
         
     except Exception as exc:  # noqa: BLE001
         logger.warning("Vector search failed: %s", exc)
-        # 降级：使用默认语料
         candidates = [
             {
                 "id": doc["id"],
@@ -396,7 +391,6 @@ def search(
         ]
         logger.info("Using default corpus fallback (%d documents)", len(candidates))
     
-    # 如果没有候选文档，返回默认语料
     if not candidates:
         logger.warning("No candidates found, returning default corpus")
         return [
@@ -415,7 +409,6 @@ def search(
             for doc in _DEFAULT_CORPUS[:top_k]
         ]
     
-    # 步骤 2: 在相同的候选文档上执行 BM25 搜索
     bm25_corpus = [
         {"id": doc["id"], "text": doc["text"]}
         for doc in candidates
@@ -424,14 +417,12 @@ def search(
     bm25_scores = _bm25_search(query_text, corpus=bm25_corpus, top_k=len(candidates))
     logger.info("BM25 search computed scores for %d documents", len(bm25_scores))
     
-    # 步骤 3: 合并分数
     results = []
     for candidate in candidates:
         doc_id = candidate["id"]
         dense_score = candidate["dense_score"]
         bm25_score = bm25_scores.get(doc_id, 0.0)
         
-        # 加权平均：Dense 60%, BM25 40%
         hybrid_score = (dense_score * 0.6) + (bm25_score * 0.4)
         
         results.append({
@@ -442,12 +433,11 @@ def search(
             "dense_score": round(dense_score, 4),
             "bm25_score": round(bm25_score, 4),
             "hybrid_score": round(hybrid_score, 4),
-            "score": round(hybrid_score, 4),  # 主分数字段
+            "score": round(hybrid_score, 4),  
             "dense_distance": candidate.get("dense_distance"),
-            "bm25_raw_score": None,  # 可选：如果需要原始分数
+            "bm25_raw_score": None, 
         })
     
-    # 步骤 4: 按混合分数排序并返回 top_k
     ranked = sorted(results, key=lambda x: x["hybrid_score"], reverse=True)
     
     logger.info(
