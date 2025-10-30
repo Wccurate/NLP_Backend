@@ -78,8 +78,8 @@ All JSON responses follow the `application/json` media type unless specified. Mu
   ```
 
   - `intent` ∈ {`normal_chat`, `mock_interview`, `evaluate_resume`, `recommend_job`}
-  - `sources` is populated for RAG responses; empty for other intents.
-  - `tool_calls` lists the tool executed in the agent graph. For normal chat, metadata includes `web_search` data when the agent invoked search.
+  - `sources` is populated for RAG responses; each item includes `dense_score` (embedding similarity), `bm25_score` (keyword similarity), `hybrid_score` (weighted blend), plus optional raw diagnostic values (`bm25_raw_score`, `dense_distance`).
+  - `tool_calls` lists the tool executed in the agent graph. For normal chat, metadata includes `web_search` details when the agent invoked search.
 
 - **Streaming Response** (when `return_stream=true`): `text/plain` newline-delimited chunks of the assistant reply.
 

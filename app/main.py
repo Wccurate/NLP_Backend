@@ -139,7 +139,7 @@ async def generate(
     search_client = get_search_client()
 
     def retriever(question: str, hyde_text: str | None = None):
-        return vector_store.search(question, hyde_text=hyde_text, embedder=llm)
+        return vector_store.search(question, hyde_text=hyde_text, embedder=llm,top_k=10)
 
     agent_state = {
         "intent": intent,

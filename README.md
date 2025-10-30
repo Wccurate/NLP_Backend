@@ -85,6 +85,7 @@ Set `"return_stream": true` to receive newline-delimited text chunks.
 - Uploaded files are *not* added to the job vector store; only descriptions ingested through `POST /jobs` are indexed for RAG.
 - PDF extraction defaults to a PyMuPDF-based parser; set `OCR_SPACE_API_KEY` (and optional `OCR_SPACE_ENDPOINT` / `OCR_SPACE_LANGUAGE`) to enable the OCR fallback strategy when needed.
 - During normal chat the agent automatically decides, via MCP-style planning, whether to invoke the configured web search provider and crafts focused queries (requires `TAVILY_API_KEY` when using Tavily).
+- RAG responses expose `dense_score`, `bm25_score`, and `hybrid_score` per source so frontends can display retrieval confidence details.
 
 ## Testing
 1. Install dependencies (once):

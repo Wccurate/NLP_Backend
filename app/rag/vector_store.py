@@ -312,13 +312,14 @@ def _bm25_search(
     *,
     docs: Optional[Sequence[Dict[str, str]]] = None,
     top_k: int = 4,
-) -> List[Dict[str, str]]:
+) -> List[Dict[str, object]]:
     corpus = list(docs) if docs else _DEFAULT_CORPUS
     if not corpus:
         return []
     tokenized = [doc["text"].lower().split() for doc in corpus]
     bm25 = BM25Okapi(tokenized)
     scores = bm25.get_scores(query.lower().split())
+    max_score = max(scores) if len(scores) else 0.0
     scored = sorted(
         zip(corpus, scores),
         key=lambda item: item[1],
@@ -328,7 +329,8 @@ def _bm25_search(
         {
             "id": entry["id"],
             "text": entry["text"],
-            "score": float(score),
+            "bm25_raw_score": float(score),
+            "bm25_score": float(score / max_score) if max_score > 0 else 0.0,
             "metadata": entry.get("metadata", {}),
             "source": entry["id"],
         }
@@ -361,12 +363,19 @@ def search(
         metas = res.get("metadatas", [[]])[0]
         distances = res.get("distances", [[]])[0]
         for doc_id, doc, meta, distance in zip(ids, docs, metas, distances):
+            dense_distance = float(distance) if distance is not None else None
+            dense_score = None
+            if dense_distance is not None:
+                dense_score = max(0.0, 1.0 - dense_distance)
             dense_results.append(
                 {
                     "id": doc_id,
                     "text": doc,
                     "metadata": meta or {},
-                    "score": float(1 - distance) if distance is not None else None,
+                    "dense_score": float(dense_score) if dense_score is not None else 0.0,
+                    "dense_distance": dense_distance,
+                    "bm25_score": 0.0,
+                    "bm25_raw_score": None,
                     "source": meta.get("source") if isinstance(meta, dict) else doc_id,
                 }
             )
@@ -377,15 +386,52 @@ def search(
     bm25_results = _bm25_search(query_text, docs=bm25_docs or None, top_k=top_k)
 
     merged: Dict[str, Dict[str, object]] = {}
-    for item in bm25_results + dense_results:
-        key = item["id"]
-        current = merged.get(key)
-        if current is None or (item.get("score") or 0) > (current.get("score") or 0):
-            merged[key] = item
+
+    def _merge_item(entry: Dict[str, object]) -> None:
+        key = entry["id"]
+        existing = merged.get(key)
+        if existing is None:
+            existing = {
+                "id": entry["id"],
+                "text": entry.get("text", ""),
+                "metadata": entry.get("metadata", {}),
+                "source": entry.get("source") or entry["id"],
+                "dense_score": 0.0,
+                "bm25_score": 0.0,
+                "dense_distance": None,
+                "bm25_raw_score": None,
+            }
+            merged[key] = existing
+        if entry.get("text"):
+            existing["text"] = entry["text"]
+        if entry.get("metadata"):
+            existing["metadata"] = entry["metadata"]
+        if entry.get("source"):
+            existing["source"] = entry["source"]
+        if entry.get("dense_score") is not None:
+            existing["dense_score"] = float(entry.get("dense_score") or 0.0)
+        if entry.get("dense_distance") is not None:
+            existing["dense_distance"] = float(entry["dense_distance"])
+        if entry.get("bm25_score") is not None:
+            existing["bm25_score"] = float(entry.get("bm25_score") or 0.0)
+        if entry.get("bm25_raw_score") is not None:
+            existing["bm25_raw_score"] = float(entry["bm25_raw_score"])
+
+    for item in dense_results:
+        _merge_item(item)
+    for item in bm25_results:
+        _merge_item(item)
+
+    for entry in merged.values():
+        dense_score = float(entry.get("dense_score") or 0.0)
+        bm25_score = float(entry.get("bm25_score") or 0.0)
+        hybrid_score = (dense_score * 0.6) + (bm25_score * 0.4)
+        entry["hybrid_score"] = hybrid_score
+        entry["score"] = hybrid_score
 
     ranked = sorted(
         merged.values(),
-        key=lambda item: item.get("score") or 0,
+        key=lambda item: item.get("hybrid_score") or 0,
         reverse=True,
     )
     if not ranked:
@@ -394,6 +440,11 @@ def search(
                 "id": doc["id"],
                 "text": doc["text"],
                 "metadata": doc.get("metadata", {}),
+                "dense_score": 0.0,
+                "bm25_score": 0.0,
+                "hybrid_score": 0.0,
+                "bm25_raw_score": None,
+                "dense_distance": None,
                 "score": 0.0,
                 "source": doc["id"],
             }

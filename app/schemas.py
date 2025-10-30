@@ -25,6 +25,11 @@ class SourceItem(BaseModel):
     source: str
     score: Optional[float] = None
     text: Optional[str] = None
+    dense_score: Optional[float] = None
+    bm25_score: Optional[float] = None
+    hybrid_score: Optional[float] = None
+    bm25_raw_score: Optional[float] = None
+    dense_distance: Optional[float] = None
 
 
 class GenerateResponse(BaseModel):

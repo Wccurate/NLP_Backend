@@ -166,8 +166,13 @@ def recommend_job(
     sources = [
         {
             "source": item.get("source") or item.get("id") or f"jobs_demo#{idx}",
-            "score": float(item.get("score") or 0.0),
+            "score": float(item.get("hybrid_score") or item.get("score") or 0.0),
             "text": item.get("text", ""),
+            "dense_score": item.get("dense_score"),
+            "bm25_score": item.get("bm25_score"),
+            "hybrid_score": item.get("hybrid_score"),
+            "bm25_raw_score": item.get("bm25_raw_score"),
+            "dense_distance": item.get("dense_distance"),
         }
         for idx, item in enumerate(results)
     ]
