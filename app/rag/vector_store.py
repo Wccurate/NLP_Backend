@@ -371,9 +371,6 @@ def search(
     except Exception as exc:  # noqa: BLE001
         logger.warning("Vector search failed: %s", exc)
 
-    bm25_docs: List[Dict[str, str]] = list(extra_corpus) if extra_corpus else []
-    bm25_results = _bm25_search(query_text, docs=bm25_docs or None, top_k=top_k)
-
     merged: Dict[str, Dict[str, object]] = {}
 
     def _merge_item(entry: Dict[str, object]) -> None:
