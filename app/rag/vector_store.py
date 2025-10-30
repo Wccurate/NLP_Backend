@@ -227,7 +227,7 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "text": "Mechanical Engineer designing components in SolidWorks and performing FEA.",
     },
     {
-        "id":B_demo#45",
+        "id": "jobs_demo#45",
         "text": "Electrical Engineer designing PCB layouts for consumer electronics.",
     },
     {
