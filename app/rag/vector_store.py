@@ -21,24 +21,6 @@ logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "jobs_demo"
 
-# _DEFAULT_CORPUS: List[Dict[str, str]] = [
-#     {
-#         "id": "jobs_demo#1",
-#         "text": "Software Engineer working on backend APIs with FastAPI and cloud services.",
-#     },
-#     {
-#         "id": "jobs_demo#2",
-#         "text": "Machine Learning Engineer focusing on NLP, transformers, and production pipelines.",
-#     },
-#     {
-#         "id": "jobs_demo#3",
-#         "text": "Data Analyst role requiring SQL, dashboards, and storytelling with data.",
-#     },
-#     {
-#         "id": "jobs_demo#4",
-#         "text": "DevOps Engineer supporting CI/CD, Kubernetes, and infrastructure automation.",
-#     },
-# ]
 _DEFAULT_CORPUS: List[Dict[str, str]] = [
     {
         "id": "jobs_demo#1",
@@ -254,7 +236,6 @@ def _get_client() -> chromadb.api.client.ClientAPI:
 @lru_cache()
 def get_collection() -> Collection:
     """Return the persistent Chroma collection."""
-
     client = _get_client()
     return client.get_or_create_collection(name=COLLECTION_NAME)
 
@@ -271,7 +252,6 @@ def add_texts(
     embedder: Optional[ChatProvider] = None,
 ) -> List[str]:
     """Add documents to Chroma and return their ids."""
-
     if not texts:
         return []
     embedder = embedder or get_llm_provider()
@@ -289,7 +269,6 @@ def add_texts(
 
 def delete(ids: Iterable[str]) -> None:
     """Delete documents by id."""
-
     col = get_collection()
     try:
         col.delete(ids=list(ids))
@@ -297,34 +276,54 @@ def delete(ids: Iterable[str]) -> None:
         logger.warning("Failed deleting ids %s: %s", ids, exc)
 
 
+def _compute_dense_score(distance: float) -> float:
+    """
+    Convert distance to similarity score.
+    Handles different distance metrics (L2, cosine, etc.)
+    """
+    # 使用指数衰减函数，适用于各种距离度量
+    # 距离越小，分数越高；距离为0时分数为1
+    if distance <= 0:
+        return 1.0
+    # 使用 1/(1+distance) 转换，确保分数在 [0, 1] 范围内
+    return 1.0 / (1.0 + distance)
+
+
 def _bm25_search(
     query: str,
     *,
     corpus: Sequence[Dict[str, str]],
-    top_k: int = 4,
-) -> List[Dict[str, object]]:
+    top_k: int = 10,
+) -> Dict[str, float]:
+    """
+    Execute BM25 search and return a mapping of document ID to normalized score.
+    
+    Returns:
+        Dict mapping document ID to BM25 score (0-1 range)
+    """
     if not corpus:
-        return []
+        return {}
+    
     tokenized = [doc["text"].lower().split() for doc in corpus]
     bm25 = BM25Okapi(tokenized)
-    scores = bm25.get_scores(query.lower().split())
-    max_score = max(scores) if len(scores) else 0.0
-    scored = sorted(
-        zip(corpus, scores),
-        key=lambda item: item[1],
-        reverse=True,
-    )[:top_k]
-    return [
-        {
-            "id": entry["id"],
-            "text": entry["text"],
-            "bm25_raw_score": float(score),
-            "bm25_score": float(score / max_score) if max_score > 0 else 0.0,
-            "metadata": entry.get("metadata", {}),
-            "source": entry["id"],
-        }
-        for entry, score in scored
-    ]
+    scores_raw = bm25.get_scores(query.lower().split())
+    scores_list = (
+        scores_raw.tolist()
+        if hasattr(scores_raw, "tolist")
+        else list(scores_raw)
+    )
+
+    if not scores_list:
+        return {}
+
+    max_score = max(scores_list)
+
+    result = {}
+    for doc, score in zip(corpus, scores_list):
+        normalized_score = float(score / max_score) if max_score > 0 else 0.0
+        result[doc["id"]] = normalized_score
+    
+    return result
 
 
 def search(
@@ -335,126 +334,72 @@ def search(
     extra_corpus: Optional[Sequence[Dict[str, str]]] = None,
     embedder: Optional[ChatProvider] = None,
 ) -> List[Dict[str, object]]:
-    """Hybrid search combining Chroma and BM25 results."""
-
+    """
+    Hybrid search combining Dense (vector) and BM25 (keyword) on unified corpus.
+    
+    Strategy:
+    1. Retrieve top_k*3 candidates from Chroma (vector search)
+    2. Run BM25 on the same candidates
+    3. Merge scores with weighted average
+    4. Return top_k results
+    """
     embedder = embedder or get_llm_provider()
     col = get_collection()
-    dense_results: List[Dict[str, object]] = []
+    
+    # 步骤 1: 从 Chroma 获取候选文档（获取更多候选用于重排）
+    candidate_multiplier = 3  # 获取 top_k * 3 个候选
+    n_candidates = max(top_k * candidate_multiplier, 20)  # 至少获取20个
+    
+    candidates: List[Dict[str, object]] = []
+    
     try:
         query_embedding = embedder.embed([hyde_text or query_text])[0]
         res = col.query(
             query_embeddings=[query_embedding],
-            n_results=top_k,
+            n_results=n_candidates,
             include=["documents", "metadatas", "distances"],
         )
+        
         ids = res.get("ids", [[]])[0]
         docs = res.get("documents", [[]])[0]
         metas = res.get("metadatas", [[]])[0]
         distances = res.get("distances", [[]])[0]
+        
         for doc_id, doc, meta, distance in zip(ids, docs, metas, distances):
-            dense_distance = float(distance) if distance is not None else None
-            dense_score = None
-            if dense_distance is not None:
-                dense_score = max(0.0, 1.0 - dense_distance)
-            dense_results.append(
-                {
-                    "id": doc_id,
-                    "text": doc,
-                    "metadata": meta or {},
-                    "dense_score": float(dense_score) if dense_score is not None else 0.0,
-                    "dense_distance": dense_distance,
-                    "bm25_score": 0.0,
-                    "bm25_raw_score": None,
-                    "source": meta.get("source") if isinstance(meta, dict) else doc_id,
-                }
-            )
+            dense_distance = float(distance) if distance is not None else 1.0
+            dense_score = _compute_dense_score(dense_distance)
+            
+            candidates.append({
+                "id": doc_id,
+                "text": doc,
+                "metadata": meta or {},
+                "dense_score": dense_score,
+                "dense_distance": dense_distance,
+                "source": meta.get("source") if isinstance(meta, dict) else doc_id,
+            })
+        
+        logger.info("Dense search retrieved %d candidates from Chroma", len(candidates))
+        
     except Exception as exc:  # noqa: BLE001
         logger.warning("Vector search failed: %s", exc)
-
-    merged: Dict[str, Dict[str, object]] = {}
-
-    def _merge_item(entry: Dict[str, object]) -> None:
-        key = entry["id"]
-        existing = merged.get(key)
-        if existing is None:
-            existing = {
-                "id": entry["id"],
-                "text": entry.get("text", ""),
-                "metadata": entry.get("metadata", {}),
-                "source": entry.get("source") or entry["id"],
-                "dense_score": 0.0,
-                "bm25_score": 0.0,
-                "dense_distance": None,
-                "bm25_raw_score": None,
-            }
-            merged[key] = existing
-        if entry.get("text"):
-            existing["text"] = entry["text"]
-        if entry.get("metadata"):
-            existing["metadata"] = entry["metadata"]
-        if entry.get("source"):
-            existing["source"] = entry["source"]
-        if entry.get("dense_score") is not None:
-            existing["dense_score"] = float(entry.get("dense_score") or 0.0)
-        if entry.get("dense_distance") is not None:
-            existing["dense_distance"] = float(entry["dense_distance"])
-        if entry.get("bm25_score") is not None:
-            existing["bm25_score"] = float(entry.get("bm25_score") or 0.0)
-        if entry.get("bm25_raw_score") is not None:
-            existing["bm25_raw_score"] = float(entry["bm25_raw_score"])
-
-    documents_for_keyword: Dict[str, Dict[str, str]] = {}
-    if extra_corpus:
-        for doc in extra_corpus:
-            documents_for_keyword[doc["id"]] = {
-                "id": doc["id"],
-                "text": doc.get("text", ""),
-                "metadata": doc.get("metadata", {}),
-                "source": doc.get("source") or doc["id"],
-            }
-    for item in dense_results:
-        documents_for_keyword[item["id"]] = {
-            "id": item["id"],
-            "text": item.get("text", ""),
-            "metadata": item.get("metadata", {}),
-            "source": item.get("source") or item["id"],
-        }
-    if not documents_for_keyword:
-        documents_for_keyword = {
-            doc["id"]: {
+        # 降级：使用默认语料
+        candidates = [
+            {
                 "id": doc["id"],
                 "text": doc["text"],
                 "metadata": doc.get("metadata", {}),
+                "dense_score": 0.0,
+                "dense_distance": None,
                 "source": doc["id"],
             }
             for doc in _DEFAULT_CORPUS
-        }
-
-    bm25_results = _bm25_search(
-        query_text,
-        corpus=list(documents_for_keyword.values()),
-        top_k=top_k,
-    )
-
-    for item in dense_results:
-        _merge_item(item)
-    for item in bm25_results:
-        _merge_item(item)
-
-    for entry in merged.values():
-        dense_score = float(entry.get("dense_score") or 0.0)
-        bm25_score = float(entry.get("bm25_score") or 0.0)
-        hybrid_score = (dense_score * 0.6) + (bm25_score * 0.4)
-        entry["hybrid_score"] = hybrid_score
-        entry["score"] = hybrid_score
-
-    ranked = sorted(
-        merged.values(),
-        key=lambda item: item.get("hybrid_score") or 0,
-        reverse=True,
-    )
-    if not ranked:
-        fallback = [
+        ]
+        logger.info("Using default corpus fallback (%d documents)", len(candidates))
+    
+    # 如果没有候选文档，返回默认语料
+    if not candidates:
+        logger.warning("No candidates found, returning default corpus")
+        return [
             {
                 "id": doc["id"],
                 "text": doc["text"],
@@ -462,26 +407,64 @@ def search(
                 "dense_score": 0.0,
                 "bm25_score": 0.0,
                 "hybrid_score": 0.0,
-                "bm25_raw_score": None,
+                "bm25_raw_score": 0.0,
                 "dense_distance": None,
                 "score": 0.0,
                 "source": doc["id"],
             }
             for doc in _DEFAULT_CORPUS[:top_k]
         ]
-        logger.info("Hybrid search returned 0 candidates, using default corpus fallback.")
-        return fallback
-
-    logger.info("Hybrid search returned %d candidates", len(ranked))
+    
+    # 步骤 2: 在相同的候选文档上执行 BM25 搜索
+    bm25_corpus = [
+        {"id": doc["id"], "text": doc["text"]}
+        for doc in candidates
+    ]
+    
+    bm25_scores = _bm25_search(query_text, corpus=bm25_corpus, top_k=len(candidates))
+    logger.info("BM25 search computed scores for %d documents", len(bm25_scores))
+    
+    # 步骤 3: 合并分数
+    results = []
+    for candidate in candidates:
+        doc_id = candidate["id"]
+        dense_score = candidate["dense_score"]
+        bm25_score = bm25_scores.get(doc_id, 0.0)
+        
+        # 加权平均：Dense 60%, BM25 40%
+        hybrid_score = (dense_score * 0.6) + (bm25_score * 0.4)
+        
+        results.append({
+            "id": doc_id,
+            "text": candidate["text"],
+            "metadata": candidate["metadata"],
+            "source": candidate["source"],
+            "dense_score": round(dense_score, 4),
+            "bm25_score": round(bm25_score, 4),
+            "hybrid_score": round(hybrid_score, 4),
+            "score": round(hybrid_score, 4),  # 主分数字段
+            "dense_distance": candidate.get("dense_distance"),
+            "bm25_raw_score": None,  # 可选：如果需要原始分数
+        })
+    
+    # 步骤 4: 按混合分数排序并返回 top_k
+    ranked = sorted(results, key=lambda x: x["hybrid_score"], reverse=True)
+    
+    logger.info(
+        "Hybrid search returned %d results (top_%d requested)",
+        len(ranked[:top_k]),
+        top_k,
+    )
+    
     return ranked[:top_k]
 
 
 def ensure_seed_documents(embedder: Optional[ChatProvider] = None) -> None:
     """Ensure the default demo corpus exists in the vector store."""
-
     col = get_collection()
     seed_ids = [doc["id"] for doc in _DEFAULT_CORPUS]
     existing_ids: set[str] = set()
+    
     try:
         existing = col.get(ids=seed_ids)
         id_batches = existing.get("ids") or []
@@ -492,11 +475,12 @@ def ensure_seed_documents(embedder: Optional[ChatProvider] = None) -> None:
                 existing_ids.add(batch)
     except Exception:  # noqa: BLE001
         existing_ids = set()
-
+    
     new_docs = [doc for doc in _DEFAULT_CORPUS if doc["id"] not in existing_ids]
     if not new_docs:
+        logger.info("All seed documents already exist in vector store")
         return
-
+    
     embedder = embedder or get_llm_provider()
     metadatas = [
         {
@@ -506,6 +490,7 @@ def ensure_seed_documents(embedder: Optional[ChatProvider] = None) -> None:
         }
         for doc in new_docs
     ]
+    
     try:
         texts = [doc["text"] for doc in new_docs]
         embeddings = embedder.embed(texts)

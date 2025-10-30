@@ -87,6 +87,7 @@ Set `"return_stream": true` to receive newline-delimited text chunks.
 - During normal chat the agent automatically decides, via MCP-style planning, whether to invoke the configured web search provider and crafts focused queries (requires `TAVILY_API_KEY` when using Tavily).
 - RAG responses expose `dense_score`, `bm25_score`, and `hybrid_score` per source so frontends can display retrieval confidence details.
 - On startup, the system seeds the demo job corpus into Chroma (if empty) so both dense and BM25 retrieval operate over the same set of documents.
+- Hybrid retrieval first fetches an expanded candidate pool from Chroma, then re-ranks the same set with normalized BM25 scores before returning the top results.
 
 ## Testing
 1. Install dependencies (once):
