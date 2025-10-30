@@ -50,6 +50,7 @@ The backend uses two persistence layers:
   - `/generate` uses the retriever only for `recommend_job` intents.
   - Hybrid search (`vector_store.search`) blends dense similarity (OpenAI embeddings) with optional BM25 fallback.
   - The integrated HyDE step generates a synthetic answer to improve initial query embeddings.
+- **Seeding**: During app startup, the bundled `_DEFAULT_CORPUS` is inserted into the collection if it is empty, ensuring BM25 and dense search share the same corpus.
 
 - **Why Chroma?**
   - Provides a simple, file-based vector store with persistent collections, perfect for quick demos.
@@ -67,4 +68,3 @@ The backend uses two persistence layers:
 
 - Paths can be configured via environment variables (`CHROMA_DIR`, etc.) in `.env`.
 - Ensure the process has write access to `./data/` for both SQLite and Chroma.
-

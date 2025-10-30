@@ -41,6 +41,8 @@ def on_startup() -> None:
     init_db()
     try:
         vector_store.get_collection()
+        llm = get_llm_provider()
+        vector_store.ensure_seed_documents(embedder=llm)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Vector store initialization failed: %s", exc)
 
@@ -226,4 +228,3 @@ def add_job_description(payload: JobDescriptionRequest) -> JobDescriptionRespons
 
     logger.info("Indexed job description with %d chunks", len(ids))
     return JobDescriptionResponse(inserted=len(ids), ids=ids)
-

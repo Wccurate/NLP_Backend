@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -39,7 +40,6 @@ COLLECTION_NAME = "jobs_demo"
 #     },
 # ]
 _DEFAULT_CORPUS: List[Dict[str, str]] = [
-    # --- 科技 (Software & Data) ---
     {
         "id": "jobs_demo#1",
         "text": "Software Engineer working on backend APIs with FastAPI and cloud services.",
@@ -108,8 +108,6 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "id": "jobs_demo#17",
         "text": "Embedded Systems Engineer programming firmware in C/C++ for IoT devices.",
     },
-
-    # --- 创意与设计 (Creative & Design) ---
     {
         "id": "jobs_demo#18",
         "text": "UX/UI Designer creating wireframes, prototypes in Figma, and conducting user testing.",
@@ -130,8 +128,6 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "id": "jobs_demo#22",
         "text": "Animation Artist (3D) using Blender and Maya for character modeling and rigging.",
     },
-
-    # --- 商业与金融 (Business & Finance) ---
     {
         "id": "jobs_demo#23",
         "text": "Digital Marketing Manager overseeing PPC, SEO, and email marketing campaigns.",
@@ -164,8 +160,6 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "id": "jobs_demo#30",
         "text": "Business Analyst bridging the gap between stakeholders and the development team.",
     },
-
-    # --- 运营与支持 (Operations & Support) ---
     {
         "id": "jobs_demo#31",
         "text": "Human Resources (HR) Generalist managing payroll, benefits, and employee relations.",
@@ -198,8 +192,6 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "id": "jobs_demo#38",
         "text": "Executive Assistant managing calendars, travel, and communications for C-level.",
     },
-
-    # --- 医疗与科学 (Healthcare & Science) ---
     {
         "id": "jobs_demo#39",
         "text": "Registered Nurse (RN) working in the Intensive Care Unit (ICU).",
@@ -220,8 +212,6 @@ _DEFAULT_CORPUS: List[Dict[str, str]] = [
         "id": "jobs_demo#43",
         "text": "Pharmacist dispensing medication and advising patients on drug interactions.",
     },
-
-    # --- 工程 (非软件) 与其他 (Engineering & Other) ---
     {
         "id": "jobs_demo#44",
         "text": "Mechanical Engineer designing components in SolidWorks and performing FEA.",
@@ -310,10 +300,9 @@ def delete(ids: Iterable[str]) -> None:
 def _bm25_search(
     query: str,
     *,
-    docs: Optional[Sequence[Dict[str, str]]] = None,
+    corpus: Sequence[Dict[str, str]],
     top_k: int = 4,
 ) -> List[Dict[str, object]]:
-    corpus = list(docs) if docs else _DEFAULT_CORPUS
     if not corpus:
         return []
     tokenized = [doc["text"].lower().split() for doc in corpus]
@@ -417,6 +406,39 @@ def search(
         if entry.get("bm25_raw_score") is not None:
             existing["bm25_raw_score"] = float(entry["bm25_raw_score"])
 
+    documents_for_keyword: Dict[str, Dict[str, str]] = {}
+    if extra_corpus:
+        for doc in extra_corpus:
+            documents_for_keyword[doc["id"]] = {
+                "id": doc["id"],
+                "text": doc.get("text", ""),
+                "metadata": doc.get("metadata", {}),
+                "source": doc.get("source") or doc["id"],
+            }
+    for item in dense_results:
+        documents_for_keyword[item["id"]] = {
+            "id": item["id"],
+            "text": item.get("text", ""),
+            "metadata": item.get("metadata", {}),
+            "source": item.get("source") or item["id"],
+        }
+    if not documents_for_keyword:
+        documents_for_keyword = {
+            doc["id"]: {
+                "id": doc["id"],
+                "text": doc["text"],
+                "metadata": doc.get("metadata", {}),
+                "source": doc["id"],
+            }
+            for doc in _DEFAULT_CORPUS
+        }
+
+    bm25_results = _bm25_search(
+        query_text,
+        corpus=list(documents_for_keyword.values()),
+        top_k=top_k,
+    )
+
     for item in dense_results:
         _merge_item(item)
     for item in bm25_results:
@@ -455,3 +477,47 @@ def search(
 
     logger.info("Hybrid search returned %d candidates", len(ranked))
     return ranked[:top_k]
+
+
+def ensure_seed_documents(embedder: Optional[ChatProvider] = None) -> None:
+    """Ensure the default demo corpus exists in the vector store."""
+
+    col = get_collection()
+    seed_ids = [doc["id"] for doc in _DEFAULT_CORPUS]
+    existing_ids: set[str] = set()
+    try:
+        existing = col.get(ids=seed_ids)
+        id_batches = existing.get("ids") or []
+        for batch in id_batches:
+            if isinstance(batch, list):
+                existing_ids.update(batch)
+            elif isinstance(batch, str):
+                existing_ids.add(batch)
+    except Exception:  # noqa: BLE001
+        existing_ids = set()
+
+    new_docs = [doc for doc in _DEFAULT_CORPUS if doc["id"] not in existing_ids]
+    if not new_docs:
+        return
+
+    embedder = embedder or get_llm_provider()
+    metadatas = [
+        {
+            "source": doc["id"],
+            "type": "seed_job",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        for doc in new_docs
+    ]
+    try:
+        texts = [doc["text"] for doc in new_docs]
+        embeddings = embedder.embed(texts)
+        col.add(
+            ids=[doc["id"] for doc in new_docs],
+            documents=texts,
+            metadatas=metadatas,
+            embeddings=embeddings,
+        )
+        logger.info("Seeded %d job documents into the vector store.", len(new_docs))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Seeding default corpus failed: %s", exc)

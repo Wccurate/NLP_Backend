@@ -73,6 +73,7 @@ def client_factory(
     monkeypatch.setattr("app.main.get_settings", lambda: DummySettings())
     monkeypatch.setattr("app.main.get_llm_provider", lambda: dummy_llm)
     monkeypatch.setattr("app.main.vector_store.get_collection", lambda: None)
+    monkeypatch.setattr("app.main.vector_store.ensure_seed_documents", lambda embedder=None: None)
 
     def fake_add_texts(texts, metadatas=None, embedder=None):
         return [f"doc-{idx}" for idx, _ in enumerate(texts)]
