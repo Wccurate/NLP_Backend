@@ -236,15 +236,3 @@ def add_job_description(payload: JobDescriptionRequest) -> JobDescriptionRespons
     return JobDescriptionResponse(inserted=len(ids), ids=ids)
 
 
-
-# def debug_test():
-#     import uvicorn
-
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-
-
-
-# if __name__=="__main__":
-#     debug_test()
