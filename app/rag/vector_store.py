@@ -344,7 +344,7 @@ def search(
     col = get_collection()
     
     candidate_multiplier = 3  
-    n_candidates = max(top_k * candidate_multiplier, 20)  # 至少获取20个
+    n_candidates = max(top_k * candidate_multiplier, 20)  # Always fetch at least 20
     
     candidates: List[Dict[str, object]] = []
     

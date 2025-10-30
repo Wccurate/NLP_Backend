@@ -20,7 +20,7 @@ def test_generate_routes_cover_intents(client_factory) -> None:
         resume_resp = app_client.post(
             "/generate",
             data={
-                "input": "请帮我评估这份简历。",
+                "input": "Please evaluate this resume.",
                 "return_stream": "false",
             },
             files={"file": ("resume.pdf", io.BytesIO(SAMPLE_PDF_BYTES), "application/pdf")},
@@ -35,7 +35,7 @@ def test_generate_routes_cover_intents(client_factory) -> None:
         rag_resp = app_client.post(
             "/generate",
             data={
-                "input": "推荐一些机器学习工程师的岗位。",
+                "input": "Recommend some machine learning engineer roles.",
                 "return_stream": "false",
             },
         )
@@ -49,7 +49,7 @@ def test_generate_routes_cover_intents(client_factory) -> None:
         interview_resp = app_client.post(
             "/generate",
             data={
-                "input": "我们来模拟一次技术面试好吗？",
+                "input": "Can we run a technical mock interview?",
                 "return_stream": "false",
             },
         )
@@ -63,7 +63,7 @@ def test_generate_routes_cover_intents(client_factory) -> None:
         chat_resp = app_client.post(
             "/generate",
             data={
-                "input": "谢谢，我们之后再联系。",
+                "input": "Thanks, let's catch up later.",
                 "return_stream": "false",
             },
         )

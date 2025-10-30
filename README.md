@@ -50,7 +50,7 @@ Key endpoints:
 1. Resume evaluation (text + PDF):
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=请帮我评估一下附件中的简历" \
+     -F "input=Please evaluate the attached resume" \
      -F "file=@examples/WANGSHIBO_CV.pdf" \
      -F "persist_documents=false"
    ```
@@ -58,17 +58,17 @@ Key endpoints:
 2. Job recommendations (text only):
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=推荐一些远程的机器学习工程师岗位"
+     -F "input=Recommend some remote machine learning engineer roles"
    ```
 3. Mock interview practice:
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=我们来进行一次数据科学家的模拟面试"
+     -F "input=Let's run a mock interview for a data scientist role"
    ```
 4. Normal chat with optional web search:
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=谢谢，今天的建议很有帮助"
+     -F "input=Thanks, today's advice was really helpful"
    ```
 5. Add a job description to the vector store:
    ```bash

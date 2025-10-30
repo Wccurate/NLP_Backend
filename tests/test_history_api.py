@@ -17,7 +17,7 @@ def test_history_returns_combined_entries(client_factory) -> None:
         eval_resp = app_client.post(
             "/generate",
             data={
-                "input": "请评价一下我附带的简历。",
+                "input": "Please review the attached resume.",
                 "return_stream": "false",
             },
             files={"file": ("resume.pdf", io.BytesIO(SAMPLE_PDF_BYTES), "application/pdf")},
@@ -27,7 +27,7 @@ def test_history_returns_combined_entries(client_factory) -> None:
         chat_resp = app_client.post(
             "/generate",
             data={
-                "input": "顺便问下，今天的安排如何？",
+                "input": "By the way, what's on the agenda today?",
                 "return_stream": "false",
             },
         )
