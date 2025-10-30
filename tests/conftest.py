@@ -14,6 +14,11 @@ class DummyLLM:
     """Deterministic substitute for the LLM provider used in tests."""
 
     def chat(self, prompt: str) -> str:
+        if "Model Context Protocol" in prompt and "Respond with JSON" in prompt:
+            return (
+                '{"search": true, "queries": ["ai career market insights"],'
+                ' "reason": "Check latest job market news."}'
+            )
         if "Craft a concise, ideal answer" in prompt:
             return "An ideal candidate brings production NLP experience and collaboration."
         if "job matching assistant" in prompt:
@@ -59,6 +64,9 @@ def client_factory(
         history_window = 10
         primary_intent_mode = "openai"
         openai_api_key = "dummy"
+        primary_search_provider = "tavily"
+        tavily_api_key = "dummy"
+        tavily_endpoint = "https://api.tavily.com/search"
 
     DummySettings.chroma_dir = chroma_dir
 
@@ -90,6 +98,20 @@ def client_factory(
 
     monkeypatch.setattr("app.main.vector_store.search", fake_search)
 
+    class DummySearch:
+        def __init__(self) -> None:
+            self.queries: List[str] = []
+
+        def search(self, query: str, *, max_results: int = 5):
+            self.queries.append(query)
+            return [
+                {
+                    "title": "Mock Result",
+                    "url": "https://example.com",
+                    "snippet": "Recent industry highlights for testing.",
+                }
+            ]
+
     def factory(intent_sequence: List[str]) -> Tuple[TestClient, DummyLLM]:
         queue = list(intent_sequence)
 
@@ -99,6 +121,8 @@ def client_factory(
             return "normal_chat"
 
         monkeypatch.setattr("app.main.intent_tools.intent_router", fake_intent_router)
+        search_stub = DummySearch()
+        monkeypatch.setattr("app.main.get_search_client", lambda: search_stub)
         client = TestClient(app)
         return client, dummy_llm
 

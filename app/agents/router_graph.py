@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Iterable, List, Optional, TypedDict
+from typing import Any, Callable, Dict, List, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
 from ..llm_provider import ChatProvider
+from ..tools.search_client import SearchProvider
 from . import tools
 
 logger = logging.getLogger(__name__)
@@ -21,9 +22,9 @@ class AgentState(TypedDict, total=False):
     user_input: str
     resume_text: str
     turn_index: int
-    search_results: Optional[Iterable[Dict[str, str]]]
     llm: ChatProvider
     retriever: Callable[..., List[Dict[str, Any]]]
+    search_client: Optional[SearchProvider]
     result: Dict[str, Any]
 
 
@@ -37,7 +38,7 @@ def _normal_chat_node(state: AgentState) -> AgentState:
         state["llm"],
         history=state.get("history", ""),
         user_input=state.get("user_input", ""),
-        search_results=state.get("search_results"),
+        search_client=state.get("search_client"),
     )
     state["result"] = {"text": text, "meta": meta}
     return state

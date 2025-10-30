@@ -10,8 +10,11 @@ from pydantic import BaseModel, Field
 class GenerateRequest(BaseModel):
     """Request body for text generation."""
 
-    input: str = Field(..., description="User input text, may include <document> tags.")
-    web_search: bool = False
+    input: str = Field(..., description="User input text, optional file uploaded separately.")
+    web_search: bool = Field(
+        default=False,
+        description="Deprecated. Present for backwards compatibility; ignored by the service.",
+    )
     return_stream: bool = False
     persist_documents: bool = False
 

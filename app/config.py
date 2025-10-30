@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     chroma_dir: Path = Field(Path("./data/chroma"), env="CHROMA_DIR")
     primary_intent_mode: str = Field("openai", env="PRIMARY_INTENT_MODE")
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+    primary_search_provider: str = Field("tavily", env="PRIMARY_SEARCH_PROVIDER")
+    tavily_api_key: Optional[str] = Field(default=None, env="TAVILY_API_KEY")
+    tavily_endpoint: str = Field("https://api.tavily.com/search", env="TAVILY_ENDPOINT")
 
     class Config:
         env_file = ".env"
@@ -32,4 +35,3 @@ def get_settings() -> Settings:
 
     load_dotenv()
     return Settings()
-

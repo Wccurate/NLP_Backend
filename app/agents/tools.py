@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import json
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from ..llm_provider import ChatProvider
 from ..rag.hyde import hyde_query
+from ..tools.search_client import SearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +18,59 @@ def normal_chat(
     *,
     history: str,
     user_input: str,
-    search_results: Optional[Iterable[Dict[str, str]]] = None,
+    search_client: Optional[SearchProvider] = None,
 ) -> Tuple[str, Dict[str, Any]]:
-    """Hold a general conversation, optionally enriched by web search."""
+    """Hold a general conversation, optionally enriched by MCP-style web search."""
+
+    plan = {
+        "search": False,
+        "queries": [],
+        "reason": "",
+    }
+    search_blocks: List[str] = []
+    executed_queries: List[str] = []
+
+    if search_client is not None:
+        planner_prompt = (
+            "You operate a Model Context Protocol (MCP) search tool. Using the"
+            " latest user message and recent history, decide if web search is"
+            " necessary. Respond with JSON only: {\"search\": bool,"
+            " \"queries\": [list of focused keyword queries not phrased as"
+            " direct questions], \"reason\": string}. If no search is needed,"
+            " return search=false."
+            "\n\nRecent conversation:\n"
+            f"{history}\n\nUser: {user_input}\n"
+        )
+        try:
+            raw_plan = llm.chat(planner_prompt).strip()
+            plan = json.loads(raw_plan)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Search planning failed (%s); continuing without search.", exc)
+            plan = {"search": False, "queries": []}
+
+        if isinstance(plan, dict) and plan.get("search") and plan.get("queries"):
+            queries = [str(q).strip() for q in plan.get("queries", []) if str(q).strip()]
+            for query in queries[:2]:
+                results = search_client.search(query, max_results=4)
+                if not results:
+                    continue
+                executed_queries.append(query)
+                snippet_lines = [
+                    f"- {hit.get('title','Result')}: {hit.get('snippet','')[:280]}"
+                    for hit in results
+                ]
+                block = (
+                    f"Search query: {query}\n" + "\n".join(snippet_lines[:4])
+                )
+                search_blocks.append(block)
 
     search_context = ""
-    if search_results:
-        snippets = [
-            f"- {item.get('title','Unknown')}: {item.get('snippet','')}"[:300]
-            for item in search_results
-        ]
-        if snippets:
-            search_context = "Web findings:\n" + "\n".join(snippets) + "\n\n"
+    if search_blocks:
+        search_context = "External findings:\n" + "\n\n".join(search_blocks) + "\n\n"
 
     prompt = (
-        "You are a career assistant carrying on a friendly conversation.\n"
+        "You are a career assistant carrying on a friendly conversation."
+        " Reference external findings if they are relevant.\n"
         f"{search_context}"
         "Recent conversation:\n"
         f"{history}\n\n"
@@ -38,7 +78,10 @@ def normal_chat(
         "Assistant:"
     )
     response = llm.chat(prompt).strip()
-    return response, {"tool": "normal_chat"}
+    meta: Dict[str, Any] = {"tool": "normal_chat"}
+    if executed_queries:
+        meta["web_search"] = {"queries": executed_queries, "plan": plan.get("reason", "")}
+    return response, meta
 
 
 def mock_interview(
@@ -129,4 +172,3 @@ def recommend_job(
         for idx, item in enumerate(results)
     ]
     return answer, {"tool": "recommend_job", "sources": sources}
-

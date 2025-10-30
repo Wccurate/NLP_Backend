@@ -28,6 +28,8 @@ pip install -r requirements.txt
    - `HISTORY_WINDOW`
    - `CHROMA_DIR`
    - `PRIMARY_INTENT_MODE` (`openai` or `fallback`)
+   - `PRIMARY_SEARCH_PROVIDER` (default `tavily`)
+   - `TAVILY_API_KEY` (required for Tavily search)
 
 The `scripts/dev_up.sh` script sources `.env` automatically.
 
@@ -50,26 +52,22 @@ Key endpoints:
    curl -X POST http://localhost:8000/generate \
      -F "input=请帮我评估一下附件中的简历" \
      -F "file=@examples/WANGSHIBO_CV.pdf" \
-     -F "persist_documents=false" \
-     -F "return_stream=false"
+     -F "persist_documents=false"
    ```
 2. Job recommendations (text only):
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=推荐一些远程的机器学习工程师岗位" \
-     -F "web_search=false"
+     -F "input=推荐一些远程的机器学习工程师岗位"
    ```
 3. Mock interview practice:
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=我们来进行一次数据科学家的模拟面试" \
-     -F "web_search=false"
+     -F "input=我们来进行一次数据科学家的模拟面试"
    ```
 4. Normal chat with optional web search:
    ```bash
    curl -X POST http://localhost:8000/generate \
-     -F "input=谢谢，今天的建议很有帮助" \
-     -F "web_search=true"
+     -F "input=谢谢，今天的建议很有帮助"
    ```
 5. Add a job description to the vector store:
    ```bash
@@ -81,11 +79,12 @@ Key endpoints:
 ### Streaming responses
 Set `"return_stream": true` to receive newline-delimited text chunks.
 
-### Document ingestion
+### Search + Document ingestion
 - Upload Word/PDF files via the `file` field; text is extracted (with simple parsing) and wrapped in `<document>...</document>` before processing or storage.
 - Users do not need to add `<document>` tags manually—the backend handles the wrapping automatically.
 - Uploaded files are *not* added to the job vector store; only descriptions ingested through `POST /jobs` are indexed for RAG.
 - PDF extraction defaults to a PyMuPDF-based parser; set `OCR_SPACE_API_KEY` (and optional `OCR_SPACE_ENDPOINT` / `OCR_SPACE_LANGUAGE`) to enable the OCR fallback strategy when needed.
+- During normal chat the agent automatically decides, via MCP-style planning, whether to invoke the configured web search provider and crafts focused queries (requires `TAVILY_API_KEY` when using Tavily).
 
 ## Testing
 1. Install dependencies (once):

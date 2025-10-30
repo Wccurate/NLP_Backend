@@ -60,7 +60,7 @@ All JSON responses follow the `application/json` media type unless specified. Mu
   |------|------|----------|---------|-------------|
   | `input` | string | Yes\* | `""` | User question or message. Required unless a file is uploaded. |
   | `file` | file (DOCX/PDF optional text/plain) | No | — | Optional resume or supporting document. Extracted text is appended as `<document>…</document>` for processing and stored with the user turn. |
-  | `web_search` | boolean (`"true"`/`"false"`) | No | `false` | Enable DuckDuckGo web search snippets to augment normal chat responses. |
+| `web_search` | boolean (`"true"`/`"false"`) | No | `false` | Deprecated. The agent now decides autonomously whether to search using MCP-style planning; this flag is ignored. |
   | `return_stream` | boolean | No | `false` | When `true`, the endpoint returns a streaming plain-text response (newline-delimited); otherwise JSON. |
   | `persist_documents` | boolean | No | `false` | Reserved flag; uploaded documents are not persisted to the vector store (job descriptions must be added via `/jobs`). |
 
@@ -79,7 +79,7 @@ All JSON responses follow the `application/json` media type unless specified. Mu
 
   - `intent` ∈ {`normal_chat`, `mock_interview`, `evaluate_resume`, `recommend_job`}
   - `sources` is populated for RAG responses; empty for other intents.
-  - `tool_calls` lists the tool executed in the agent graph.
+  - `tool_calls` lists the tool executed in the agent graph. For normal chat, metadata includes `web_search` data when the agent invoked search.
 
 - **Streaming Response** (when `return_stream=true`): `text/plain` newline-delimited chunks of the assistant reply.
 
@@ -141,4 +141,3 @@ All JSON responses follow the `application/json` media type unless specified. Mu
 ## Authentication
 
 - No authentication is configured; this demo operates as a single-session system.
-

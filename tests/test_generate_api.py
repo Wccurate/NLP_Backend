@@ -19,7 +19,6 @@ def test_generate_routes_cover_intents(client_factory) -> None:
                 "/generate",
                 data={
                     "input": "请帮我评估这份简历。",
-                    "web_search": "false",
                     "return_stream": "false",
                 },
                 files={"file": ("WANGSHIBO_CV.pdf", pdf_file, "application/pdf")},
@@ -35,7 +34,6 @@ def test_generate_routes_cover_intents(client_factory) -> None:
             "/generate",
             data={
                 "input": "推荐一些机器学习工程师的岗位。",
-                "web_search": "false",
                 "return_stream": "false",
             },
         )
@@ -50,7 +48,6 @@ def test_generate_routes_cover_intents(client_factory) -> None:
             "/generate",
             data={
                 "input": "我们来模拟一次技术面试好吗？",
-                "web_search": "false",
                 "return_stream": "false",
             },
         )
@@ -65,7 +62,6 @@ def test_generate_routes_cover_intents(client_factory) -> None:
             "/generate",
             data={
                 "input": "谢谢，我们之后再联系。",
-                "web_search": "false",
                 "return_stream": "false",
             },
         )

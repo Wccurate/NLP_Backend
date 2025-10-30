@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
-from typing import AsyncGenerator, Dict, Iterable, List, Sequence
+from typing import AsyncGenerator, Dict, List, Sequence
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
@@ -25,7 +25,7 @@ from .schemas import (
     SourceItem,
 )
 from .tools import intent as intent_tools
-from .tools import web_search
+from .tools.search_client import get_search_client
 from .utils import file_loader, sliding_window, text as text_utils
 
 logger = logging.getLogger(__name__)
@@ -75,12 +75,6 @@ def get_history(
 
 def _format_history(messages: Sequence[History]) -> str:
     return "\n".join(f"{msg.role}: {msg.content}" for msg in messages)
-
-
-async def _maybe_search(user_text: str, use_search: bool) -> Iterable[Dict[str, str]]:
-    if not use_search or not user_text.strip():
-        return []
-    return await web_search.web_search(user_text)
 
 
 def _count_intent(messages: Sequence[History], intent: str) -> int:
@@ -142,9 +136,7 @@ async def generate(
         raise HTTPException(status_code=500, detail="Intent classification failed.") from exc
 
     llm = get_llm_provider()
-
-    search_seed = user_text or documents_joined
-    search_results = await _maybe_search(search_seed, request_payload.web_search)
+    search_client = get_search_client()
 
     def retriever(question: str, hyde_text: str | None = None):
         return vector_store.search(question, hyde_text=hyde_text, embedder=llm)
@@ -155,9 +147,9 @@ async def generate(
         "user_input": user_text or documents_joined or combined_input,
         "resume_text": documents_joined or user_text,
         "turn_index": turn_index,
-        "search_results": search_results,
         "llm": llm,
         "retriever": retriever,
+        "search_client": search_client,
     }
 
     try:
@@ -234,5 +226,4 @@ def add_job_description(payload: JobDescriptionRequest) -> JobDescriptionRespons
 
     logger.info("Indexed job description with %d chunks", len(ids))
     return JobDescriptionResponse(inserted=len(ids), ids=ids)
-
 

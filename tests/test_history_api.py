@@ -16,7 +16,6 @@ def test_history_returns_combined_entries(client_factory) -> None:
                 "/generate",
                 data={
                     "input": "请评价一下我附带的简历。",
-                    "web_search": "false",
                     "return_stream": "false",
                 },
                 files={"file": ("WANGSHIBO_CV.pdf", pdf, "application/pdf")},
@@ -27,7 +26,6 @@ def test_history_returns_combined_entries(client_factory) -> None:
             "/generate",
             data={
                 "input": "顺便问下，今天的安排如何？",
-                "web_search": "false",
                 "return_stream": "false",
             },
         )
