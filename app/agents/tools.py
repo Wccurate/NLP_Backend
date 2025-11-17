@@ -120,15 +120,18 @@ def evaluate_resume(
     *,
     resume_text: str,
 ) -> Tuple[str, Dict[str, Any]]:
-    """Evaluate the resume and return a JSON string."""
+    """Evaluate the resume and return a Markdown formatted analysis."""
 
     prompt = (
-        "You are a resume reviewer. Read the resume text and respond with JSON only.\n"
-        'Keys: "pros" (array of strengths), "cons" (array of issues), '
-        '"suggestions" (array of concise advice).\n'
-        "Resume:\n"
-        f"{resume_text}\n"
-        "JSON:"
+        "You are a professional resume reviewer. Your task is to analyze the provided resume and generate a comprehensive evaluation in Markdown format.\n\n"
+        "The evaluation must include the following sections:\n"
+        "1.  **Resume Highlights**: A concise summary of the candidate's most impressive qualifications and experiences.\n"
+        "2.  **Strengths**: A bulleted list of the resume's strong points.\n"
+        "3.  **Areas for Improvement**: A bulleted list of weaknesses or areas that could be improved.\n"
+        "4.  **Suggestions**: Actionable advice for enhancing the resume.\n\n"
+        "Format your response strictly in Markdown.\n\n"
+        f"Resume:\n{resume_text}\n\n"
+        "Begin your evaluation now."
     )
     response = llm.chat(prompt).strip()
     return response, {"tool": "evaluate_resume"}

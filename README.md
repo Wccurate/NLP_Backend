@@ -6,7 +6,7 @@ Minimal FastAPI backend that demonstrates a single-session career assistant with
 - Intent recognition with OpenAI zero-shot or TF‑IDF/LogReg fallback.
 - Tools for normal chat, mock interviews, resume critique (JSON), and job matching with HyDE-assisted hybrid RAG.
 - SQLite history table and sliding window memory.
-- Optional web search enrichment via DuckDuckGo.
+- Optional MCP-style web search enrichment via Tavily with structured query planning.
 - Streaming or JSON responses from `/generate`.
 
 ## Requirements
@@ -85,10 +85,15 @@ Set `"return_stream": true` to receive newline-delimited text chunks.
 - Users do not need to add `<document>` tags manually—the backend handles the wrapping automatically.
 - Uploaded files are *not* added to the job vector store; only descriptions ingested through `POST /jobs` are indexed for RAG.
 - PDF extraction defaults to a PyMuPDF-based parser; set `OCR_SPACE_API_KEY` (and optional `OCR_SPACE_ENDPOINT` / `OCR_SPACE_LANGUAGE`) to enable the OCR fallback strategy when needed.
-- During normal chat the agent automatically decides, via MCP-style planning, whether to invoke the configured web search provider and crafts focused queries (requires `TAVILY_API_KEY` when using Tavily).
+- During normal chat the agent automatically decides—via an MCP-style planner that returns `{"search": bool, "queries": [...], "reason": "..."}`—whether to invoke the configured web search provider and crafts up to two focused queries (set `PRIMARY_SEARCH_PROVIDER=tavily` and `TAVILY_API_KEY=...` to enable).
 - RAG responses expose `dense_score`, `bm25_score`, and `hybrid_score` per source so frontends can display retrieval confidence details.
 - On startup, the system seeds the demo job corpus into Chroma (if empty) so both dense and BM25 retrieval operate over the same set of documents.
 - Hybrid retrieval first fetches an expanded candidate pool from Chroma, then re-ranks the same set with normalized BM25 scores before returning the top results.
+
+### MCP-style web search
+- The planner inspects the latest user turn plus recent history, then returns JSON telling the agent whether to search and which keyword-style queries to run; failures degrade gracefully to a no-search path.
+- When search is enabled, the agent executes up to two queries against Tavily, collects titles/snippets, and injects them as an `External findings:` block before generation so answers can reference fresh context.
+- To turn search on: set `PRIMARY_SEARCH_PROVIDER=tavily` and supply `TAVILY_API_KEY`; omit the key to operate in non-search mode without code changes.
 
 ## Testing
 1. Install dependencies (once):
